@@ -1,0 +1,57 @@
+def replace_funky_chars(target)(
+    replace($target, "[~!/=<>\\[\\]+*|? :;]", "_")
+)
+ 
+let start = .originTimestamp
+let alertname = string("" + get-key(.extras, "labels.alertname", ""))
+let instance = replace_funky_chars(string("" + get-key(.extras, "labels.instance", "")))
+let guaranteed_instance = replace_funky_chars(string("" + get-key(.extras, "guaranteedInstance", "")))
+let raw_source_ci = if ($instance == "" and $guaranteed_instance == "") "localhost"
+                else if ($instance == "") $guaranteed_instance
+                else $instance
+let source_ci = replace_funky_chars($raw_source_ci)
+let ciid = string("PROMETHEUS_" + $source_ci)
+let summary = string("" + .title)
+let job = replace_funky_chars(string("" + get-key(.extras, "labels.job", "")))
+let eventId = string(.extras.fingerprint + "_" + $start)
+let detail = $alertname + " ci_display_name: " + $guaranteed_instance + "alert_unique_id: " + $eventId
+let severity = uppercase(string("" + get-key(.extras, "labels.severity", "WARNING")))
+let message = if ($summary != "null") $summary else $alertname
+let status = string("" + get-key(.extras, "status.state", "OPEN"))
+let event_status = if ($status == "resolved") "CLOSED"
+                   else if ($status == "firing") "OPEN"
+                   else if ($status == "inactive") "CLOSED"
+                   else if ($status == "pending") "OPEN"
+                   else if ($status == "unprocessed") "OPEN"
+                   else if ($status == "active") "OPEN"
+                   else if ($status == "suppressed") "OPEN"
+                   else "OPEN"
+{
+  "class": "PrometheusAlert",
+  "severity": $severity,
+  "msg": $message,
+  "status": $event_status,
+  "_ci_id": $ciid,
+  "source_hostname": $source_ci ,
+  "source_identifier": $ciid,
+  "source_attributes": {
+    "external_id": $ciid
+  },
+  "details": $detail,
+  "creation_time": string("" + $start),
+  "source_unique_event_id": $eventId,
+  "sourceEntityType": "Other",
+  "extras": {
+    "eventId": $eventId,
+    "originURI": .extras.generatorURL,
+    "original_json": .extras.original,
+    "additional_info": string(.extras.additionalInfo),
+    "source_fingerprint": .extras.fingerprint,
+    "alertname": $alertname,
+    "summary": $summary,
+    "job": $job,
+    "prometheus_category": $job,
+    "prometheus_subcategory": $guaranteed_instance ,
+    "source_address": $guaranteed_instance
+  }
+}

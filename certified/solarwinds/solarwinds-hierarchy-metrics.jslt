@@ -1,0 +1,57 @@
+def funEntityName(mg,en)
+if (starts-with($mg, "Orion.NPM.Interface"))
+      replace($en,"[/=+?:;]","-")
+else
+if ($mg == "Orion.CPULoad") 
+         "CPU_Memory"
+      else
+         "Response_Time"
+
+def funEntityType(mg,en)
+if (starts-with($mg, "Orion.NPM.Interface"))
+      "Node_Interface"
+else
+if ($mg == "Orion.CPULoad") 
+         "Node_CPULoad"
+      else
+         "Node_ResponseTime" 
+
+def funHostType(ciType)
+if ($ciType == "Orion.VIM.Hosts")
+      "VmWare.Host"
+else
+  if ($ciType == "Orion.VIM.VCenters")
+      "VmWare.Virtual_Center"
+  else
+      "Server"
+
+        
+
+[
+    {
+        let hostName = replace(.extras.host, "^.* on ", "")
+        let metricName = .name
+        let entityName = funEntityName(.measurementGroup[0],.extras.Name)
+        let entityTypeId = funEntityType(.measurementGroup[0],.extras.Name)
+        "labels" : {
+            "metricName" : $metricName,
+            "hostname" : $hostName,
+            "entityId" : join(["SolarWinds", ":", $hostName, ":", $entityTypeId, ":", $entityName], ""),
+            "entityTypeId" : $entityTypeId,
+            "deviceIPAddress" : .extras.IPAddress,
+            "instanceName" : $entityName,
+            "entityName" : $entityName,
+            "hostType" : funHostType(.extras.CIType),
+            "isKpi" : true,
+            "unit" : .unit,
+            "source" : "SolarWinds",
+            "external_id" : .extras.ciExternalId
+        },
+        "samples" : [
+            {
+                "value" : number(.value),
+                "timestamp" : number(.originTimestamp)
+            }
+        ]
+    }
+]
